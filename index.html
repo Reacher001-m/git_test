@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Operations Sandbox</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="terminal-container">
+        <div class="terminal-header">
+            <div class="terminal-dots">
+                <span class="dot red"></span>
+                <span class="dot yellow"></span>
+                <span class="dot green"></span>
+            </div>
+            <div class="terminal-title">Git 操作サンドボックス</div>
+            <div class="terminal-title-ghost">&nbsp;</div>
+        </div>
+
+        <div class="tab-bar">
+            <button type="button" class="tab active" data-tab="sandbox">ターミナル</button>
+            <button type="button" class="tab" data-tab="workflow">開発フローで学ぶ</button>
+            <button type="button" class="tab" data-tab="practice">上級者向け問題</button>
+        </div>
+
+        <div class="terminal-body">
+            <div class="tab-panel active" id="panel-sandbox">
+                <div class="scroll-area" id="base-scroll">
+                    <div class="output-area" id="base-output"></div>
+                    <div class="input-container">
+                        <span class="prompt" id="base-prompt">$ </span>
+                        <input type="text" id="base-input" class="command-input" autocomplete="off" autofocus>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-panel" id="panel-workflow">
+                <div class="workflow-toolbar">
+                    <span class="wf-hint-label">このタブでは、実開発の手順をたどりながら Git を学べます。専用のリポジトリを準備して進めます。</span>
+                    <button type="button" class="btn" id="wf-reset">最初からやり直す</button>
+                </div>
+                <div class="scroll-area" id="wf-scroll">
+                    <div class="output-area wf-lesson-area" id="wf-lesson"></div>
+                    <div class="output-area" id="wf-output"></div>
+                    <div class="input-container">
+                        <span class="prompt" id="wf-prompt">$ </span>
+                        <input type="text" id="wf-input" class="command-input" autocomplete="off">
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-panel" id="panel-practice">
+                <div class="workflow-toolbar">
+                    <span class="wf-hint-label">達成すべき状態を作るコマンドを入力する練習問題です。すべての達成条件が満たされるとクリア!</span>
+                    <button type="button" class="btn" id="pb-back">問題一覧に戻る</button>
+                </div>
+                <div class="scroll-area" id="pb-scroll">
+                    <div class="output-area wf-lesson-area" id="pb-lesson"></div>
+                    <div class="output-area" id="pb-output"></div>
+                    <div class="input-container">
+                        <span class="prompt" id="pb-prompt">$ </span>
+                        <input type="text" id="pb-input" class="command-input" autocomplete="off">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/state.js"></script>
+    <script src="js/path.js"></script>
+    <script src="js/filesystem.js"></script>
+    <script src="js/gitcore.js"></script>
+    <script src="js/graph.js"></script>
+    <script src="js/terminal.js"></script>
+    <script src="js/tutorial.js"></script>
+    <script src="js/practice.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
