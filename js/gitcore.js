@@ -627,6 +627,7 @@ function gitPush(args) {
         out('hint: Updates were rejected because the tip of your current branch is behind', 'gray');
         out('hint: its remote counterpart. Integrate the remote changes (e.g.', 'gray');
         out("hint: 'git pull ...') before pushing again.", 'gray');
+        state.lastPushRejected = true;
         return;
     }
 
@@ -660,6 +661,7 @@ function gitPush(args) {
 
     state.remote.branches[branch] = localTip;
     state.remote.synced[branch] = localTip;
+    state.lastPushRejected = false;
 }
 
 // ---------------------------------------------------------------------

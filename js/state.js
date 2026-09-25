@@ -21,6 +21,7 @@ const state = {
     modified: [],          // 追跡済みで変更されたファイル(絶対パス)
     tags: {},              // name -> { commit, annotated, message, date }
     remote: null,          // { name, url, branches: {name->tip}, synced: {name->lastFetchTip} } / null で未設定
+    lastPushRejected: false, // 直近の push が拒否(rejected)されたか。チュートリアルのステップ判定に使う
 };
 
 // ---------------------------------------------------------------------
@@ -92,6 +93,7 @@ function resetRepo() {
     state.modified = [];
     state.tags = {};
     state.remote = null;
+    state.lastPushRejected = false;
     fsState.dirs = new Set(['/', '/src']);
     fsState.cwd = '/';
     idCounter = 0;

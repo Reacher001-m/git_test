@@ -384,8 +384,13 @@ const COURSES = [
                 ],
                 commands: ['git push origin main'],
                 hint: '「git push origin main」と入力して、拒否されることを実際に確認してください。エラー自体が「次は pull をしなさい」という指示です。',
-                check: (cmd) => /^git push/.test(cmd) && !!state.remote && !!state.remote.branches['main']
-                    && state.remote.branches['main'] !== state.branches['main'].tip,
+                check: (cmd) => {
+                    if (!/^git push/.test(cmd)) return false;
+                    if (!state.remote || !state.remote.branches['main']) return false;
+                    const synced = state.remote.branches['main'] === state.branches['main'].tip;
+                    // rejected を一度体験した、または (すでに解決済みで同期済みなら) 通過
+                    return state.lastPushRejected === true || synced;
+                },
                 success: ['push が拒否されました。GitHub はあなたの歴史を守ってくれています。', 'では、指示どおり pull して衝突を解決しましょう。'],
             },
             {
@@ -405,7 +410,11 @@ const COURSES = [
                 check: () => {
                     if (!state.remote || !state.remote.branches['main']) return false;
                     const tip = state.branches['main'].tip;
-                    return !!tip && state.commits[tip].parents.length === 2;
+                    if (!tip) return false;
+                    const merged = state.commits[tip].parents.length === 2;
+                    const synced = state.remote.branches['main'] === tip;
+                    // マージコミットができた、または既に同期済み(解決済み)なら通過
+                    return merged || synced;
                 },
                 success: ['マージコミットができました。分かれていた2つの線が1つに合流しています。', 'これで再び push できる状態です。仕上げに送信しましょう。'],
             },
