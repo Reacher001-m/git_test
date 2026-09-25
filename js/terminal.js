@@ -99,6 +99,14 @@ function showHelp() {
     out('  git tag <name>           タグを付ける (-a <name> -m "msg" で注釈付き)');
     out('  git reset                ステージ登録を取り消す');
     out('');
+    out('== コミットを取り消す (困ったとき) ==', 'cyan');
+    out('  git reset --soft HEAD~1   最新コミットだけ取り消し (手元の変更はステージ済みのまま)');
+    out('  git reset --hard HEAD~1   N個前まで戻して、そのコミットの変更も破棄する');
+    out('  git revert HEAD           コミットを打ち消す「新しいコミット」で安全に戻す');
+    out('  git restore <file>        変更を破棄して元に戻す');
+    out('  git restore --staged <file>  ステージ登録だけを取り消す');
+    out('  git commit --amend -m "..."  直近のコミットメッセージ/内容を修正');
+    out('');
     out('== コミット ==', 'cyan');
     out('  touch <file>             ファイルを作成/更新');
     out('  git add <file>           ステージに追加 ("git add ." で今いる場所以下を追加)');
@@ -159,8 +167,11 @@ function dispatchGit(body) {
             else rmFiles(pieces.slice(1));
             break;
         case 'commit': {
-            const m = rest.match(/^-m\s+"([\s\S]*?)"\s*$/);
-            gitCommit(m ? m[1] : (rest.match(/^-m\s+(.+)$/)?.[1] || null));
+            const amend = /(\s|^)--amend(\s|$)/.test(rest);
+            const clean = rest.replace(/--amend/g, '').trim();
+            const m = clean.match(/^-m\s+"([\s\S]*?)"\s*$/);
+            let msg = m ? m[1] : (clean.match(/^-m\s+(.+)$/)?.[1] || null);
+            gitCommit(msg, amend);
             break;
         }
         case 'branch': gitBranch(rest); break;
@@ -170,7 +181,9 @@ function dispatchGit(body) {
         case 'log': gitLog(rest); break;
         case 'graph': gitGraph(); break;
         case 'tag': gitTag(rest); break;
-        case 'reset': gitReset(); break;
+        case 'reset': gitReset(rest); break;
+        case 'revert': gitRevert(rest); break;
+        case 'restore': gitRestore(rest); break;
         case 'remote': gitRemote(rest); break;
         case 'push': gitPush(rest); break;
         case 'fetch': gitFetch(rest); break;
@@ -229,6 +242,11 @@ function dispatchCommand(raw) {
 function activateTab(name) {
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
+    if (name === 'cheatsheet') {
+        const s = document.getElementById('cs-search');
+        if (s) s.focus();
+        return;
+    }
     setSink(name);
     refreshPrompt();
     if (name === 'workflow') {

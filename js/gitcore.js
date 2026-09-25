@@ -187,53 +187,6 @@ function gitAdd(pattern) {
 }
 
 // ---------------------------------------------------------------------
-// git commit
-// ---------------------------------------------------------------------
-function gitCommit(message) {
-    if (!guardInit()) return;
-    if (!message) {
-        out('error: switch `m\' requires a value', 'red');
-        out('usage: git commit -m "<message>"', 'red');
-        return;
-    }
-
-    const staged = state.stagedFiles;
-    if (staged.length === 0) {
-        if (hasUntracked()) {
-            out('nothing added to commit but untracked files present (use "git add" to track)', 'red');
-        } else {
-            out('nothing to commit, working tree clean', 'green');
-        }
-        return;
-    }
-
-    const tip = state.branches[state.currentBranch].tip;
-    const prevFiles = tip ? state.commits[tip].files : [];
-    const files = new Set(prevFiles);
-    for (const f of staged) files.add(f);
-
-    const id = genId();
-    state.seq += 1;
-    state.commits[id] = {
-        id,
-        message,
-        parents: tip ? [tip] : [],
-        files: [...files],
-        date: fmtDate(),
-        seq: state.seq,
-    };
-    state.branches[state.currentBranch].tip = id;
-    state.stagedFiles = [];
-    state.modified = state.modified.filter(f => !staged.includes(f));
-
-    const added = files.size - prevFiles.length;
-    out(`[${state.currentBranch} ${id.substring(0, 7)}] ${message}`, 'green');
-    if (added > 0) {
-        out(` ${added} file${added === 1 ? '' : 's'} changed`, 'green');
-    }
-}
-
-// ---------------------------------------------------------------------
 // git branch
 // ---------------------------------------------------------------------
 function gitBranch(args) {
@@ -451,12 +404,255 @@ function historyIdList(fromTip, toTip) {
 }
 
 // ---------------------------------------------------------------------
-// git reset (add の取り消し)
+// git reset (ステージ取り消し / コミットの取り消し)
+//   git reset                       → ステージ登録を取り消す
+//   git reset --soft HEAD~N        → N 個前へ戻し、戻した変更はステージ済みのまま
+//   git reset --hard HEAD~N        → N 個前へ戻し、戻した変更は破棄
 // ---------------------------------------------------------------------
-function gitReset() {
+function gitReset(args) {
     if (!guardInit()) return;
-    if (state.stagedFiles.length === 0) return;
+    const words = (args || '').trim().split(/\s+/).filter(Boolean);
+
+    const flags = words.filter(w => ['--soft', '--hard', '--mixed'].includes(w));
+    const ref = words.find(w => !flags.includes(w)) || null;
+    const soft = flags.includes('--soft');
+    const hard = flags.includes('--hard');
+
+    if (!ref) {
+        if (soft || hard) {
+            out('usage: git reset --soft/--hard HEAD~N', 'red');
+            return;
+        }
+        if (state.stagedFiles.length === 0) return;
+        state.stagedFiles = [];
+        out('Unstaged changes after reset:', 'green');
+        return;
+    }
+
+    if (ref !== 'HEAD' && !/^HEAD~(\d+)$/.test(ref)) {
+        out(`fatal: ambiguous argument '${ref}'`, 'red');
+        return;
+    }
+    const nMatch = ref.match(/^HEAD~(\d+)$/);
+    const n = nMatch ? Number(nMatch[1]) : 0;
+    const mode = hard ? 'hard' : soft ? 'soft' : 'mixed';
+
+    const curTip = state.branches[state.currentBranch].tip;
+    if (!curTip) {
+        out('fatal: Failed to resolve HEAD as a valid ref.', 'red');
+        return;
+    }
+
+    if (mode === 'hard' && n === 0) {
+        state.stagedFiles = [];
+        state.modified = [];
+        out(`HEAD is now at ${curTip.substring(0, 7)} ${state.commits[curTip].message}`, 'yellow');
+        return;
+    }
+
+    let newTip = curTip;
+    for (let i = 0; i < n; i++) {
+        if (!newTip || !state.commits[newTip] || state.commits[newTip].parents.length === 0) {
+            out(`fatal: Failed to resolve '${ref}'`, 'red');
+            return;
+        }
+        newTip = state.commits[newTip].parents[0];
+    }
+    if (newTip === curTip) {
+        out('Nothing to reset.');
+        return;
+    }
+
+    const undone = state.commits[curTip].files.filter(f => !state.commits[newTip].files.includes(f));
+    state.branches[state.currentBranch].tip = newTip;
+
+    if (mode === 'hard') {
+        state.stagedFiles = [];
+        state.modified = [];
+        state.workingFiles = state.workingFiles.filter(f => !undone.includes(f));
+        out(`HEAD is now at ${newTip.substring(0, 7)} ${state.commits[newTip].message}`, 'yellow');
+    } else {
+        state.stagedFiles = [];
+        for (const f of undone) if (!state.stagedFiles.includes(f)) state.stagedFiles.push(f);
+        state.modified = state.modified.filter(f => !undone.includes(f));
+        out(`HEAD is now at ${newTip.substring(0, 7)} ${state.commits[newTip].message}`, 'yellow');
+        if (undone.length) {
+            out('Changes to be committed: (git reset で取り消せる)', 'dim');
+            for (const f of undone) out(`\tnew file:   ${relPath(f)}`, 'green');
+        }
+    }
+}
+
+// ---------------------------------------------------------------------
+// git restore (作業ツリーの変更を取り消す / ステージ取り消し)
+//   git restore <file>            → 変更を破棄して元の状態に戻す
+//   git restore --staged <file>   → ステージ登録だけを取り消す
+// ---------------------------------------------------------------------
+function gitRestore(args) {
+    if (!guardInit()) return;
+    let words = (args || '').trim().split(/\s+/).filter(Boolean);
+    let stagedOnly = false;
+    if (words[0] === '--staged' || words[0] === '--cached') {
+        stagedOnly = true;
+        words = words.slice(1);
+    }
+    if (words.length === 0) {
+        out('usage: git restore <file>', 'red');
+        out('       または git restore --staged <file>', 'dim');
+        return;
+    }
+
+    for (const t of words) {
+        const w = resolvePath(t);
+        if (fsState.dirs.has(w)) {
+            if (stagedOnly) {
+                const subs = state.stagedFiles.filter(f => f.startsWith(w + '/'));
+                state.stagedFiles = state.stagedFiles.filter(f => !f.startsWith(w + '/'));
+                for (const s of subs) out(`Unstaged: ${relPath(s)}`, 'green');
+            } else {
+                const subs = state.modified.filter(f => f.startsWith(w + '/'));
+                state.modified = state.modified.filter(f => !f.startsWith(w + '/'));
+                if (subs.length === 0) out(`pathspec '${t}' did not match any tracked files`, 'red');
+                for (const s of subs) out(`Restored: ${relPath(s)}`, 'green');
+            }
+            continue;
+        }
+
+        if (stagedOnly) {
+            if (state.stagedFiles.includes(w)) {
+                state.stagedFiles = state.stagedFiles.filter(f => f !== w);
+                if (state.workingFiles.includes(w)) state.modified.push(w);
+                out(`Unstaged: ${relPath(w)}`, 'green');
+            } else {
+                out(`pathspec '${t}' did not match any tracked files`, 'red');
+            }
+        } else {
+            if (state.modified.includes(w)) {
+                state.modified = state.modified.filter(f => f !== w);
+                out(`Restored: ${relPath(w)}`, 'green');
+            } else {
+                out(`pathspec '${t}' did not match any tracked files`, 'red');
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------
+// git revert (安全にコミットを打ち消す新しいコミットを作る)
+//   git revert HEAD      → 最新コミットを打ち消すコミットを追加
+//   git revert <hash>    → 指定コミットを打ち消すコミットを追加
+// ---------------------------------------------------------------------
+function gitRevert(args) {
+    if (!guardInit()) return;
+    const words = (args || '').trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+        out('usage: git revert HEAD', 'red');
+        out('       あるいは git revert <hash>', 'dim');
+        return;
+    }
+    const tip = state.branches[state.currentBranch].tip;
+    if (!tip) {
+        out('fatal: Failed to resolve HEAD as a valid ref.', 'red');
+        return;
+    }
+
+    let target = null;
+    if (words[0] === 'HEAD') {
+        target = tip;
+    } else {
+        const hits = Object.keys(state.commits).filter(id => id.startsWith(words[0]));
+        if (hits.length === 1) target = hits[0];
+    }
+    if (!target || !state.commits[target]) {
+        out(`error: bad revision '${words[0]}'`, 'red');
+        return;
+    }
+    if (state.commits[target].parents.length === 0) {
+        out('error: cannot revert the initial commit', 'red');
+        return;
+    }
+
+    const revertFiles = state.commits[state.commits[target].parents[0]].files;
+    const id = genId();
+    state.seq += 1;
+    const msg = 'Revert "' + state.commits[target].message + '"';
+    state.commits[id] = {
+        id,
+        message: msg,
+        parents: tip ? [tip] : [],
+        files: [...revertFiles],
+        date: fmtDate(),
+        seq: state.seq,
+    };
+    state.branches[state.currentBranch].tip = id;
     state.stagedFiles = [];
+    state.modified = state.modified.filter(f => !revertFiles.includes(f));
+    out(`[${state.currentBranch} ${id.substring(0, 7)}] ${msg}`, 'green');
+    out('This reverts commit ' + target.substring(0, 7) + '.', 'dim');
+    out('git graph で見ると、取り消しコミットが新しいコミットとして追加されます。', 'dim');
+}
+
+// ---------------------------------------------------------------------
+// git commit (amend 対応)
+// ---------------------------------------------------------------------
+function gitCommit(message, amend) {
+    if (!guardInit()) return;
+    if (!message) {
+        out('error: switch `m\' requires a value', 'red');
+        out('usage: git commit -m "<message>"', 'red');
+        return;
+    }
+
+    const tip = state.branches[state.currentBranch].tip;
+
+    if (amend) {
+        if (!tip) {
+            out('error: there is no commit yet so nothing to amend', 'red');
+            return;
+        }
+        state.commits[tip].message = message;
+        const files = new Set(state.commits[tip].files);
+        for (const f of state.stagedFiles) files.add(f);
+        state.commits[tip].files = [...files];
+        state.stagedFiles = [];
+        state.modified = state.modified.filter(f => !state.commits[tip].files.includes(f));
+        out(`[${state.currentBranch} ${tip.substring(0, 7)}] ${message}`, 'green');
+        return;
+    }
+
+    const staged = state.stagedFiles;
+    if (staged.length === 0) {
+        if (hasUntracked()) {
+            out('nothing added to commit but untracked files present (use "git add" to track)', 'red');
+        } else {
+            out('nothing to commit, working tree clean', 'green');
+        }
+        return;
+    }
+
+    const prevFiles = tip ? state.commits[tip].files : [];
+    const files = new Set(prevFiles);
+    for (const f of staged) files.add(f);
+
+    const id = genId();
+    state.seq += 1;
+    state.commits[id] = {
+        id,
+        message,
+        parents: tip ? [tip] : [],
+        files: [...files],
+        date: fmtDate(),
+        seq: state.seq,
+    };
+    state.branches[state.currentBranch].tip = id;
+    state.stagedFiles = [];
+    state.modified = state.modified.filter(f => !staged.includes(f));
+
+    const added = files.size - prevFiles.length;
+    out(`[${state.currentBranch} ${id.substring(0, 7)}] ${message}`, 'green');
+    if (added > 0) {
+        out(` ${added} file${added === 1 ? '' : 's'} changed`, 'green');
+    }
 }
 
 // ---------------------------------------------------------------------

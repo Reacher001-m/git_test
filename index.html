@@ -22,6 +22,7 @@
             <button type="button" class="tab active" data-tab="sandbox">ターミナル</button>
             <button type="button" class="tab" data-tab="workflow">開発フローで学ぶ</button>
             <button type="button" class="tab" data-tab="practice">上級者向け問題</button>
+            <button type="button" class="tab" data-tab="cheatsheet">早見表</button>
         </div>
 
         <div class="terminal-body">
@@ -64,6 +65,16 @@
                     </div>
                 </div>
             </div>
+        <div class="tab-panel" id="panel-cheatsheet">
+                <div class="workflow-toolbar cs-toolbar">
+                    <input type="text" id="cs-search" class="cs-search" placeholder="「状況」や「コマンド」で検索 (例: バグ / push / 戻す / add / revert)" autocomplete="off">
+                    <span class="cs-count" id="cs-count"></span>
+                </div>
+                <div class="cs-chips" id="cs-chips"></div>
+                <div class="cs-scroll" id="cs-scroll">
+                    <div class="cs-content" id="cs-content"></div>
+                </div>
+            </div>
         </div>
     </div>
     <script src="js/state.js"></script>
@@ -74,6 +85,7 @@
     <script src="js/terminal.js"></script>
     <script src="js/tutorial.js"></script>
     <script src="js/practice.js"></script>
+    <script src="js/cheatsheet.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

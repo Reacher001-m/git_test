@@ -43,6 +43,7 @@ function boot() {
     refreshPrompt();
     renderWorkflowStart();
     renderPracticeList();
+    renderCheatsheet();
     out('==========================================', 'gray');
     out('        Git 操作サンドボックス v2.1', 'cyan');
     out('==========================================', 'gray');
@@ -50,6 +51,7 @@ function boot() {
     out('「help」でコマンド一覧、「git graph」でブランチツリーを表示します。', 'gray');
     out('「開発フローで学ぶ」タブで実開発の手順を、', 'yellow');
     out('「上級者向け問題」タブで Git/GitHub の練習問題を解けます。', 'yellow');
+    out('「早見表」タブで「こんなときどうする?」を調べられます。', 'yellow');
     out('');
     out('最初の一歩: git init', 'yellow');
     baseInput.focus();
@@ -74,6 +76,7 @@ const __deps = [
     gitGraph, computeLayout, commitColor, renderSvg, buildTextGraph,                   // graph.js
     workflowView, renderWorkflowStart, startTutorial, workflowOnCommand,              // tutorial.js
     practiceView, renderPracticeList, startPractice, practiceOnCommand,               // practice.js
+    CSSECTIONS, csState, renderCheatsheet, csOnSearch, renderCheatsheetContent,       // cheatsheet.js
     activateTab, resetRepo,                                                          // 再帰の整合
 ];
 void __deps;
