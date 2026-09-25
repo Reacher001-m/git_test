@@ -262,9 +262,9 @@ body {
 }
 
 .pq-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 12px;
     padding: 12px 4px 4px;
 }
 
@@ -277,7 +277,7 @@ body {
     background: #1c2128;
     border: 1px solid #30363d;
     border-radius: 8px;
-    padding: 12px 14px;
+    padding: 14px 18px;
     color: #e6edf3;
     cursor: pointer;
     transition: border-color 0.15s, background 0.15s;
@@ -289,9 +289,9 @@ body {
 }
 
 .pq-level {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: bold;
-    padding: 1px 8px;
+    padding: 1px 9px;
     border-radius: 10px;
 }
 
@@ -300,20 +300,21 @@ body {
 .pq-lv-3 { background: #3d1d0f; color: #f0883e; }
 
 .pq-title {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: bold;
+    line-height: 1.5;
 }
 
 .pq-blurb {
-    font-size: 12px;
+    font-size: 13px;
     color: #8b949e;
-    line-height: 1.6;
+    line-height: 1.7;
 }
 
 .pq-checks {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
     margin-bottom: 12px;
 }
 
@@ -321,10 +322,10 @@ body {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    background: #161b22;
+    background: #1c2128;
     border: 1px solid #30363d;
     border-radius: 6px;
-    padding: 8px 10px;
+    padding: 10px 12px;
 }
 
 .pq-check .pq-mark {
@@ -340,17 +341,18 @@ body {
 }
 
 .pq-desc {
-    font-size: 13px;
+    font-size: 14px;
+    line-height: 1.6;
 }
 
 .pq-hint {
-    font-size: 12px;
+    font-size: 13px;
     color: #d29922;
 }
 
 .pq-check.on .pq-hint {
     color: #7ee787;
-    font-size: 12px;
+    font-size: 13px;
     margin-top: 2px;
 }
 
@@ -603,8 +605,8 @@ body {
     border-radius: 6px;
     color: #e6edf3;
     font-family: inherit;
-    font-size: 13px;
-    padding: 6px 12px;
+    font-size: 14px;
+    padding: 7px 12px;
     outline: none;
 }
 
@@ -618,7 +620,7 @@ body {
 
 .cs-count {
     color: #8b949e;
-    font-size: 12px;
+    font-size: 13px;
     white-space: nowrap;
 }
 
@@ -639,8 +641,8 @@ body {
     border: 1px solid #30363d;
     border-radius: 14px;
     font-family: inherit;
-    font-size: 12px;
-    padding: 3px 12px;
+    font-size: 13px;
+    padding: 4px 14px;
     cursor: pointer;
 }
 
@@ -683,35 +685,37 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: bold;
     color: #e6edf3;
     margin: 0 0 10px 0;
 }
 
 .cs-card {
-    background: #0d1117;
-    border: 1px solid #21262d;
+    background: #1c2128;
+    border: 1px solid #30363d;
     border-radius: 8px;
-    padding: 12px 16px;
+    padding: 14px 18px;
     margin: 0;
     display: flex;
     flex-direction: column;
 }
 
 .cs-card:hover {
-    border-color: #30363d;
+    border-color: #58a6ff;
+    background: #22272e;
 }
 
 .cs-card-title {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: bold;
     color: #e6edf3;
     margin-bottom: 8px;
+    line-height: 1.5;
 }
 
 .cs-label {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: bold;
     color: #8b949e;
     margin: 8px 0 4px 0;
@@ -736,7 +740,7 @@ body {
     border: 1px solid #30363d;
     border-radius: 5px;
     color: #3fb950;
-    font-size: 13px;
+    font-size: 14px;
     padding: 2px 8px;
     white-space: pre-wrap;
     word-break: break-all;
@@ -745,7 +749,7 @@ body {
 
 .cs-cmd-d {
     color: #c9d1d9;
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.6;
     min-width: 0;
 }
@@ -754,7 +758,7 @@ body {
     margin: 0;
     padding-left: 20px;
     color: #c9d1d9;
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.8;
 }
 
@@ -770,14 +774,14 @@ body {
     border-radius: 6px;
     padding: 6px 10px;
     color: #e3b341;
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.7;
 }
 
 .cs-empty {
     text-align: center;
     color: #8b949e;
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1.9;
     padding: 40px 20px;
 }
@@ -785,6 +789,6 @@ body {
 .cs-foot {
     text-align: center;
     color: #6e7681;
-    font-size: 12px;
+    font-size: 13px;
     margin-top: 8px;
 }

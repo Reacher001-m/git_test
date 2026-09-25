@@ -131,7 +131,7 @@ const CSSECTIONS = [
                 ],
                 s: ['① git status でステージに入っているものを確認',
                     '② 全部 → git reset / 特定だけ → git restore --staged ファイル名'],
-                note: 'どちらもテキストファイルの内容自体は消しません。安心して使えます。',
+                note: 'どちらもテキストファイルの内容自体は消しません。',
             },
         ],
     },
@@ -236,7 +236,7 @@ const CSSECTIONS = [
                 t: 'git push が rejected された (相手が先に進んでいた)',
                 k: ['rejected', '拒否', 'push できない', 'non-fast', 'conflict', '衝突', '取り込', '先に'],
                 cmds: [
-                    { c: 'git push origin main', d: '最初は拒否される。それが正しい挙動。落ち着いて' },
+                    { c: 'git push origin main', d: '最初は拒否される。それが正しい挙動' },
                     { c: 'git pull origin main', d: '相手の変更を先に手元へ取り込む' },
                     { c: 'git push origin main', d: '統合してから改めて送る' },
                 ],
@@ -341,7 +341,7 @@ const CSSECTIONS = [
                 ],
                 s: ['① commit 前なら git reset で元通り',
                     '② commit 済みなら git add ファイル名 → git commit で再追跡'],
-                note: 'git rm --cached の直後に git reset をすれば安全に戻せます。慌てずに。',
+                note: 'git rm --cached の直後に git reset をすれば安全に戻せます。',
             },
         ],
     },
@@ -381,7 +381,7 @@ const CSSECTIONS = [
                 ],
                 s: ['① git status で working tree clean ならやることは無い',
                     '② 進めたければファイルを編集 → git add → git commit'],
-                note: 'エラーではなく「変更は全部コミット済み」という意味です。安心して大丈夫。',
+                note: 'エラーではなく「変更は全部コミット済み」という意味です。',
             },
             {
                 t: "error: switch 'm' requires a value",
@@ -410,7 +410,7 @@ const CSSECTIONS = [
                     { c: 'git pull origin main', d: '相手の変更を先に取り込む (マージコミットになる場合もある)' },
                     { c: 'git push origin main', d: '統合できたら改めて送る' },
                 ],
-                s: ['① 慌てずに git pull origin main',
+                s: ['① まず git pull origin main',
                     '② 相手と自分の変更が共存できるよう統合される',
                     '③ git push origin main で送信'],
                 note: '相手が先に進んでいた時の正当な反応です。--force の強制 push は避けて「pull → push」が基本。',
@@ -495,7 +495,7 @@ const CSSECTIONS = [
                 ],
                 s: ['① git reset --soft HEAD~1 で1個前へ',
                     '② 修正して git add → git commit でコミットし直す'],
-                note: '--soft なら中身が残るので安心。むやみに --hard を使わないのがコツ。',
+                note: '--soft なら中身が残ります。むやみに --hard を使わないのがコツです。',
             },
             {
                 t: 'まだコミットしていない書きかけの変更を捨てたい',
@@ -596,7 +596,7 @@ function renderCheatsheetContent() {
         html += `<div class="cs-grid">`;
         for (const it of visible) {
             html += `<div class="cs-card" data-keywords="${escapeHtml(csItemText(it))}">`;
-            html += `<div class="cs-card-title">🛟 ${escapeHtml(it.t)}</div>`;
+            html += `<div class="cs-card-title">${escapeHtml(it.t)}</div>`;
             if (it.cmds && it.cmds.length) {
                 html += `<div class="cs-label">▼ コマンド</div><div class="cs-cmds">`;
                 for (const c of it.cmds) {
@@ -611,7 +611,7 @@ function renderCheatsheetContent() {
                 html += `</ol>`;
             }
             if (it.note) {
-                html += `<div class="cs-note">💡 ${escapeHtml(it.note)}</div>`;
+                html += `<div class="cs-note">${escapeHtml(it.note)}</div>`;
             }
             html += `</div>`;
         }
@@ -623,7 +623,7 @@ function renderCheatsheetContent() {
         html += `<div class="cs-empty">「${escapeHtml(csState.q || 'このカテゴリー')}」に当てはまる状況が見つかりませんでした。<br>` +
                 `「コミット」「プッシュ」「戻す」「バグ」など短い言葉で検索してみてください。</div>`;
     } else {
-        html += `<div class="cs-foot">この早見表のコマンドは「ターミナルタブ」でそのまま試せます。「※実機コマンド」と書いたものは実際のPCでのみ動作します。分からなくなったらまず「git status」!</div>`;
+        html += `<div class="cs-foot">この早見表のコマンドは「ターミナルタブ」でそのまま試せます。「※実機コマンド」と書いたものは実際のPCでのみ動作します。分からなくなったらまず「git status」で状態を確認してください。</div>`;
     }
 
     content.innerHTML = html;
