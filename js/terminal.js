@@ -98,6 +98,8 @@ function showHelp() {
     out('  git graph                SVG でブランチツリーを表示 (独自コマンド)');
     out('  git tag <name>           タグを付ける (-a <name> -m "msg" で注釈付き)');
     out('  git reset                ステージ登録を取り消す');
+    out('  git rm <file>           ファイルを削除して「削除」をステージする');
+    out('  git rm --cached <file>  手元のファイルを残したまま Gitの追跡から外す');
     out('');
     out('== コミットを取り消す (困ったとき) ==', 'cyan');
     out('  git reset --soft HEAD~1   最新コミットだけ取り消し (手元の変更はステージ済みのまま)');
@@ -162,10 +164,7 @@ function dispatchGit(body) {
         case 'init': gitInit(); break;
         case 'status': gitStatus(); break;
         case 'add': gitAdd(rest); break;
-        case 'rm':
-            if (pieces[1] === '--cached') gitReset();
-            else rmFiles(pieces.slice(1));
-            break;
+        case 'rm': gitRm(rest); break;
         case 'commit': {
             const amend = /(\s|^)--amend(\s|$)/.test(rest);
             const clean = rest.replace(/--amend/g, '').trim();

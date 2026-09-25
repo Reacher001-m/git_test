@@ -70,7 +70,7 @@ const __deps = [
     displayPath, resolvePath, normalizePath, relPath, workingFilesUnder, childrenOf,  // path.js
     out, echo, scrollBottom, setSink, showHelp, guardInit, dispatchCommand, bindInput, // terminal.js
     cmdPwd, cmdMkdir, cmdCd, cmdRmdir, cmdLs, cmdTree, walkTree, touchFiles, rmFiles,  // filesystem.js
-    gitInit, gitStatus, gitAdd, gitCommit, gitBranch, gitCheckout, gitSwitch, gitMerge, // gitcore.js
+    gitInit, gitStatus, gitAdd, gitCommit, gitRm, gitBranch, gitCheckout, gitSwitch, gitMerge, // gitcore.js
     gitReset, gitTag, gitLog, mapHeadTips, historyIdList, headCommitedFiles, hasTracked, hasUntracked,
     gitRemote, gitPush, gitFetch, gitPull, gitPeerCommit, peerCommitTip, aheadBehind,   // gitcore.js (GitHub)
     gitGraph, computeLayout, commitColor, renderSvg, buildTextGraph,                   // graph.js

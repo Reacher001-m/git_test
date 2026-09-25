@@ -258,6 +258,210 @@ const CSSECTIONS = [
         ],
     },
     {
+        key: 'disconnect',
+        label: '接続を切る・ファイル除外',
+        color: 'pq-lv-1',
+        items: [
+            {
+                t: 'GitHub との接続を切って、ローカルだけで開発したい (リモートを外す)',
+                k: ['接続', '切る', 'remote rm', 'remove', '外す', 'github', 'リモート', 'やめ', '撤去'],
+                cmds: [
+                    { c: 'git remote -v', d: '今の接続先を確認する' },
+                    { c: 'git remote rm origin', d: 'リモート設定を削除する (git remote remove origin も同じ)' },
+                ],
+                s: ['① git remote -v で接続先を確認',
+                    '② git remote rm origin で設定を外す',
+                    '③ git remote -v で (no remote) になる'],
+                note: 'コミット履歴やファイルは消えません。GitHub 上のリポジトリ自体は削除するなら Web 側で行います。',
+            },
+            {
+                t: 'Git の管理ごとやめて、ただのフォルダに戻したい',
+                k: ['rm -rf .git', '管理', 'やめ', 'リポジトリ', '消す', '手放', '廃止'],
+                cmds: [
+                    { c: 'rm -rf .git', d: 'Git の管理データを削除 (※実機コマンド)' },
+                ],
+                s: ['① 必要なファイルを別フォルダにバックアップ',
+                    '② rm -rf .git で管理データを削除'],
+                note: '※実機コマンド: .git に全コミット履歴が入っています。削除すると二度と戻せません。サンドボックスでは再現しません。',
+            },
+            {
+                t: '特定のファイルを Git / GitHub の追跡から外したい (手元には残す)',
+                k: ['ファイル', '追跡', '外す', 'rm --cached', 'secret', '除外', '対象', '接続', '切る'],
+                cmds: [
+                    { c: 'git rm --cached <ファイル名>', d: 'そのファイルだけ追跡から外し、手元には残す' },
+                    { c: 'git commit -m "stop tracking <ファイル名>"', d: '追跡外しを記録する' },
+                ],
+                s: ['① git rm --cached ファイル名 で追跡を外す (手元には残る)',
+                    '② git status で「deleted:」と出ることを確認',
+                    '③ git commit -m "..." で確定',
+                    '④ git push で GitHub にも反映'],
+                note: '「接続を切る」は削除ではありません。秘密情報なら、過去コミットに残ると履歴修正が必要になる点に注意。',
+            },
+            {
+                t: '特定のフォルダごと追跡から外したい',
+                k: ['フォルダ', 'ディレクトリ', 'まとめ', 'rm -r', '除外', 'build', 'node_modules', 'キャッシュ'],
+                cmds: [
+                    { c: 'git rm -r --cached <ディレクトリ名>', d: 'フォルダごと追跡を外して手元に残す' },
+                    { c: 'git commit -m "untrack <ディレクトリ名>"', d: '確定する' },
+                ],
+                s: ['① git rm -r --cached ディレクトリ名',
+                    '② git status で deleted 表示を確認',
+                    '③ git commit -m "..." で確定'],
+                note: 'よくある用途: build/ や node_modules/ など「成果物・依存物」をリポジトリから外す。',
+            },
+            {
+                t: '今後そのファイルを追跡させないようにしておきたい',
+                k: ['gitignore', '除外', '今後', '無視', '設定', 'させない', '環境設定'],
+                cmds: [
+                    { c: '整え方: .gitignore', d: '.gitignore に無視したいパターンを書く (※実機)' },
+                ],
+                s: ['① .gitignore を新規作成し、除外する名前やパターンを書く (例: secret.txt / *.log)',
+                    '② git add .gitignore → git commit で設定を共有',
+                    '③ その後は git status に出なくなる'],
+                note: '※実機コマンド: サンドボックスはファイルの中身を書けないため、実際のPCで試してください。',
+            },
+            {
+                t: 'GitHub の URL を新しいリポジトリに張り替えたい',
+                k: ['url', '張り替え', 'set-url', '新しい', '別リポジトリ', '変更', '移行'],
+                cmds: [
+                    { c: 'git remote set-url origin <新しいURL>', d: '送信先の URL を変更する' },
+                    { c: 'git remote -v', d: '変更されたか確認する' },
+                ],
+                s: ['① git remote set-url origin https://github.com/あなた/新しいリポジトリ.git',
+                    '② git remote -v で確認',
+                    '③ git push origin main で新しい URL に送信'],
+                note: '履歴はそのまま新しいリポジトリへ送れます。',
+            },
+            {
+                t: 'うっかり追跡を外したので、追跡に戻したい',
+                k: ['戻す', '復活', '追跡', '再', '取り消し', 'add', 'reset', '間違え'],
+                cmds: [
+                    { c: 'git reset', d: 'commit 前なら削除ステージを取り消す' },
+                    { c: 'git add <ファイル名>', d: 'commit 済みなら add で再追跡' },
+                ],
+                s: ['① commit 前なら git reset で元通り',
+                    '② commit 済みなら git add ファイル名 → git commit で再追跡'],
+                note: 'git rm --cached の直後に git reset をすれば安全に戻せます。慌てずに。',
+            },
+        ],
+    },
+    {
+        key: 'errors',
+        label: 'エラーの対処法',
+        color: 'pq-lv-2',
+        items: [
+            {
+                t: "fatal: not a git repository (or any of the parent directories)",
+                k: ['not a git', 'fatal', 'git じゃない', 'repository', 'init忘れ', 'フォルダ', 'エラー'],
+                cmds: [
+                    { c: 'git init', d: '管理を始める (初回)' },
+                    { c: 'cd <正しいフォルダ>', d: '管理中のフォルダへ移動' },
+                ],
+                s: ['① まだ管理していないなら git init',
+                    '② 管理中の場所なら cd で移動して移動先で git status'],
+                note: '「Git が管理していないフォルダで git コマンドを打った」が原因です。プロンプトに [main] と出る場所で作業するのが基本。',
+            },
+            {
+                t: "nothing added to commit but untracked files present",
+                k: ['nothing added', 'add 忘れ', 'untracked', 'コミットできない', 'track', 'エラー'],
+                cmds: [
+                    { c: 'git add <ファイル名>', d: 'コミット対象をステージする' },
+                    { c: 'git commit -m "メッセージ"', d: 'それからコミットする' },
+                ],
+                s: ['① 入れるファイルを git add する',
+                    '② git status でステージされているのを確認',
+                    '③ git commit -m "..."'],
+                note: 'add を忘れると commit できない、という仕組みです。「add → commit」の流れを覚えましょう。',
+            },
+            {
+                t: "nothing to commit, working tree clean",
+                k: ['nothing to commit', 'clean', '何もない', 'コミット済み', '変化なし', 'エラー'],
+                cmds: [
+                    { c: 'git status', d: '本当に変化がないか確認する' },
+                ],
+                s: ['① git status で working tree clean ならやることは無い',
+                    '② 進めたければファイルを編集 → git add → git commit'],
+                note: 'エラーではなく「変更は全部コミット済み」という意味です。安心して大丈夫。',
+            },
+            {
+                t: "error: switch 'm' requires a value",
+                k: ['switch m', 'requires a value', '-m', 'メッセージ忘れ', '使い方', 'エラー'],
+                cmds: [
+                    { c: 'git commit -m "コミットメッセージ"', d: '-m の後に必ずメッセージを書く' },
+                ],
+                s: ['① メッセージを必ず書く。例: git commit -m "fix: バグ修正"'],
+                note: '-m "..." の後にメッセージを書き忘れると出ます。必ず何か書きます。',
+            },
+            {
+                t: "fatal: ambiguous argument ... / Not a valid object name",
+                k: ['ambiguous', 'valid object', 'ハッシュ', '打ち間違い', 'commit id', 'エラー'],
+                cmds: [
+                    { c: 'git log --oneline', d: '正しいIDを確認する' },
+                    { c: 'git revert <ID>', d: '確認できたIDに変えて再実行する' },
+                ],
+                s: ['① git log --oneline で先頭の短いID(7文字)を確認',
+                    '② そのIDで git revert / git reset などに使う'],
+                note: 'コミットIDやタグ名の打ち間違いです。ブランチ名は「git branch」で一覧を見て確認。',
+            },
+            {
+                t: "push が rejected (non-fast-forward) / Updates were rejected",
+                k: ['rejected', 'non-fast', 'Updates were rejected', '拒否', 'conflict', '先に進まれ', 'push エラー'],
+                cmds: [
+                    { c: 'git pull origin main', d: '相手の変更を先に取り込む (マージコミットになる場合もある)' },
+                    { c: 'git push origin main', d: '統合できたら改めて送る' },
+                ],
+                s: ['① 慌てずに git pull origin main',
+                    '② 相手と自分の変更が共存できるよう統合される',
+                    '③ git push origin main で送信'],
+                note: '相手が先に進んでいた時の正当な反応です。--force の強制 push は避けて「pull → push」が基本。',
+            },
+            {
+                t: "Already up to date.",
+                k: ['Already up to date', '最新', 'pull', '更新ない', 'あとで', 'エラー'],
+                cmds: [
+                    { c: 'git status', d: '同期状態 (ahead / behind) を確認する' },
+                    { c: 'git push', d: '自分にだけコミットがある場合' },
+                ],
+                s: ['① pull で「Already up to date」なら受ける更新が無い',
+                    '② git status で ahead なら push し忘れ、behind なら pull し忘れ'],
+                note: 'エラーではなく「もう最新」です。次は push の番かもしれません。',
+            },
+            {
+                t: "fatal: pathspec 'xxx' did not match any files",
+                k: ['pathspec', 'did not match', 'ファイル名', '打ち間違い', '存在しない', 'エラー'],
+                cmds: [
+                    { c: 'ls', d: '現在地のファイル名を確認する' },
+                    { c: 'git add <正しい名前>', d: '正しい名前で実行する' },
+                ],
+                s: ['① ls でファイル名を確認 (tree で全体も見られる)',
+                    '② 正しい名前で git add など再実行'],
+                note: 'ファイル名・フォルダ名の打ち間違いです。日本語名はコピー&ペーストが安全。',
+            },
+            {
+                t: "git rm で failed (追跡外しができない)",
+                k: ['rm', '追跡外し', 'do not have', 'not tracked', 'セキュリティ', 'エラー'],
+                cmds: [
+                    { c: 'git add <ファイル名>', d: 'まず追跡してから…' },
+                    { c: 'git rm --cached <ファイル名>', d: '…改めて追跡を外す' },
+                ],
+                s: ['① 一度も add / commit していないファイルは追跡外しの対象外',
+                    '② 追跡できたら git rm --cached で外す'],
+                note: 'git rm --cached は「追跡済みのファイル」が対象です。未追跡なら add してから使います。',
+            },
+            {
+                t: "error: The branch 'xxx' is not fully merged.",
+                k: ['not fully merged', 'branch -d', '削除エラー', 'マージしてない', 'ブランチ', 'エラー'],
+                cmds: [
+                    { c: 'git branch -D <ブランチ名>', d: '強制削除 (そのコミットも捨てる)' },
+                    { c: 'git merge <ブランチ名>', d: '先に統合してから -d が本来の道' },
+                ],
+                s: ['① 成果を残すなら main に merge してから git branch -d',
+                    '② 捨てるなら git branch -D で強制削除'],
+                note: '-D で消したコミットは戻せないので、本当に必要ない時だけに。',
+            },
+        ],
+    },
+    {
         key: 'undo',
         label: '元に戻す・困ったとき',
         color: 'pq-lv-3',
@@ -389,6 +593,7 @@ function renderCheatsheetContent() {
 
         html += `<div class="cs-section">`;
         html += `<div class="cs-section-head"><span class="pq-level ${sec.color}">${escapeHtml(sec.label)}</span>${escapeHtml(sec.label)} の早見表</div>`;
+        html += `<div class="cs-grid">`;
         for (const it of visible) {
             html += `<div class="cs-card" data-keywords="${escapeHtml(csItemText(it))}">`;
             html += `<div class="cs-card-title">🛟 ${escapeHtml(it.t)}</div>`;
@@ -411,13 +616,14 @@ function renderCheatsheetContent() {
             html += `</div>`;
         }
         html += `</div>`;
+        html += `</div>`;
     }
 
     if (visibleTotal === 0) {
         html += `<div class="cs-empty">「${escapeHtml(csState.q || 'このカテゴリー')}」に当てはまる状況が見つかりませんでした。<br>` +
                 `「コミット」「プッシュ」「戻す」「バグ」など短い言葉で検索してみてください。</div>`;
     } else {
-        html += `<div class="cs-foot">この早見表のコマンドは「ターミナルタブ」でそのまま試せます。分からなくなったら「git status」!</div>`;
+        html += `<div class="cs-foot">この早見表のコマンドは「ターミナルタブ」でそのまま試せます。「※実機コマンド」と書いたものは実際のPCでのみ動作します。分からなくなったらまず「git status」!</div>`;
     }
 
     content.innerHTML = html;

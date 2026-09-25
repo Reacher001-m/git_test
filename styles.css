@@ -663,11 +663,20 @@ body {
 
 .cs-content {
     padding: 14px 16px 24px;
-    max-width: 860px;
+    margin: 0 auto;
+    max-width: 1280px;
 }
 
 .cs-section {
     margin-bottom: 26px;
+}
+
+/* カードを 2〜4 列のグリッドに整列して左右バランスを取る */
+.cs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 12px;
+    align-items: stretch;
 }
 
 .cs-section-head {
@@ -685,7 +694,9 @@ body {
     border: 1px solid #21262d;
     border-radius: 8px;
     padding: 12px 16px;
-    margin: 0 0 12px 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .cs-card:hover {
@@ -752,7 +763,8 @@ body {
 }
 
 .cs-note {
-    margin-top: 8px;
+    margin-top: auto;
+    padding-top: 8px;
     background: #161b2240;
     border: 1px dashed #30363d;
     border-radius: 6px;

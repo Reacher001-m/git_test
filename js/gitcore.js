@@ -88,8 +88,9 @@ function gitStatus() {
     const tip = state.branches[state.currentBranch].tip;
     const headFiles = headCommitedFiles();
     const staged = state.stagedFiles;
+    const deletions = state.stagedDeletions;
     const untrackedFiles = state.workingFiles.filter(f => !headFiles.includes(f) && !staged.includes(f));
-    const modified = state.modified.filter(f => !staged.includes(f) && !untrackedFiles.includes(f));
+    const modified = state.modified.filter(f => !staged.includes(f) && !untrackedFiles.includes(f) && !deletions.includes(f));
 
     out(`On branch ${state.currentBranch}`, 'white');
 
@@ -111,12 +112,13 @@ function gitStatus() {
     }
 
     if (!tip) out('No commits yet', 'yellow');
-    if (staged.length) {
+    if (staged.length || deletions.length) {
         out('');
         out('Changes to be committed:');
         out('  (use "git reset" to unstage)', 'dim');
         out('');
         for (const f of staged) out(`\tnew file:   ${relPath(f)}`, 'green');
+        for (const f of deletions) out(`\tdeleted:    ${relPath(f)}`, 'red');
     }
     if (modified.length) {
         out('');
@@ -134,7 +136,7 @@ function gitStatus() {
     }
 
     out('');
-    if (!staged.length && !modified.length && !untrackedFiles.length) {
+    if (!staged.length && !modified.length && !untrackedFiles.length && !deletions.length) {
         if (!tip) {
             out('nothing to commit (create/copy files and use "git add" to track)', 'gray');
         } else {
@@ -423,8 +425,9 @@ function gitReset(args) {
             out('usage: git reset --soft/--hard HEAD~N', 'red');
             return;
         }
-        if (state.stagedFiles.length === 0) return;
+        if (state.stagedFiles.length === 0 && state.stagedDeletions.length === 0) return;
         state.stagedFiles = [];
+        state.stagedDeletions = [];
         out('Unstaged changes after reset:', 'green');
         return;
     }
@@ -465,6 +468,7 @@ function gitReset(args) {
 
     const undone = state.commits[curTip].files.filter(f => !state.commits[newTip].files.includes(f));
     state.branches[state.currentBranch].tip = newTip;
+    state.stagedDeletions = [];
 
     if (mode === 'hard') {
         state.stagedFiles = [];
@@ -480,6 +484,52 @@ function gitReset(args) {
             out('Changes to be committed: (git reset で取り消せる)', 'dim');
             for (const f of undone) out(`\tnew file:   ${relPath(f)}`, 'green');
         }
+    }
+}
+
+// ---------------------------------------------------------------------
+// git rm (ファイルの削除 / 追跡から外す)
+//   git rm <file>              → ファイルを削除して「削除」をステージする
+//   git rm --cached <file>     → 手元のファイルは残したまま、Gitの追跡から外す
+// ---------------------------------------------------------------------
+function gitRm(args) {
+    if (!guardInit()) return;
+    const words = (args || '').trim().split(/\s+/).filter(Boolean);
+    const cached = words.includes('--cached');
+    const tokens = words.filter(w => w !== '--cached' && w !== '--staged' && w !== '-r' && w !== '-f');
+    if (tokens.length === 0) {
+        out('usage: git rm [--cached] <file>...', 'red');
+        return;
+    }
+    const tip = state.branches[state.currentBranch].tip;
+    const headFiles = tip ? state.commits[tip].files : [];
+
+    const targets = [];
+    for (const t of tokens) {
+        const want = resolvePath(t);
+        let matched;
+        if (fsState.dirs.has(want)) matched = state.workingFiles.filter(f => f.startsWith(want + '/'));
+        else matched = state.workingFiles.filter(f => f === want);
+        if (matched.length === 0) {
+            out(`fatal: pathspec '${t}' did not match any files`, 'red');
+            continue;
+        }
+        for (const f of matched) if (!targets.includes(f)) targets.push(f);
+    }
+    if (targets.length === 0) return;
+
+    for (const f of targets) {
+        const tracked = headFiles.includes(f);
+        if (!cached) {
+            state.workingFiles = state.workingFiles.filter(x => x !== f);
+        }
+        if (tracked) {
+            if (!state.stagedDeletions.includes(f)) state.stagedDeletions.push(f);
+        }
+        const i = state.stagedFiles.indexOf(f);
+        if (i !== -1) state.stagedFiles.splice(i, 1);
+        state.modified = state.modified.filter(x => x !== f);
+        out(`rm '${relPath(f)}'`, 'red');
     }
 }
 
@@ -508,6 +558,7 @@ function gitRestore(args) {
             if (stagedOnly) {
                 const subs = state.stagedFiles.filter(f => f.startsWith(w + '/'));
                 state.stagedFiles = state.stagedFiles.filter(f => !f.startsWith(w + '/'));
+                state.stagedDeletions = state.stagedDeletions.filter(f => !f.startsWith(w + '/'));
                 for (const s of subs) out(`Unstaged: ${relPath(s)}`, 'green');
             } else {
                 const subs = state.modified.filter(f => f.startsWith(w + '/'));
@@ -519,8 +570,9 @@ function gitRestore(args) {
         }
 
         if (stagedOnly) {
-            if (state.stagedFiles.includes(w)) {
+            if (state.stagedFiles.includes(w) || state.stagedDeletions.includes(w)) {
                 state.stagedFiles = state.stagedFiles.filter(f => f !== w);
+                state.stagedDeletions = state.stagedDeletions.filter(f => f !== w);
                 if (state.workingFiles.includes(w)) state.modified.push(w);
                 out(`Unstaged: ${relPath(w)}`, 'green');
             } else {
@@ -613,15 +665,17 @@ function gitCommit(message, amend) {
         state.commits[tip].message = message;
         const files = new Set(state.commits[tip].files);
         for (const f of state.stagedFiles) files.add(f);
+        for (const f of state.stagedDeletions) files.delete(f);
         state.commits[tip].files = [...files];
         state.stagedFiles = [];
+        state.stagedDeletions = [];
         state.modified = state.modified.filter(f => !state.commits[tip].files.includes(f));
         out(`[${state.currentBranch} ${tip.substring(0, 7)}] ${message}`, 'green');
         return;
     }
 
     const staged = state.stagedFiles;
-    if (staged.length === 0) {
+    if (staged.length === 0 && state.stagedDeletions.length === 0) {
         if (hasUntracked()) {
             out('nothing added to commit but untracked files present (use "git add" to track)', 'red');
         } else {
@@ -633,6 +687,8 @@ function gitCommit(message, amend) {
     const prevFiles = tip ? state.commits[tip].files : [];
     const files = new Set(prevFiles);
     for (const f of staged) files.add(f);
+    for (const f of state.stagedDeletions) files.delete(f);
+    const deletedCount = state.stagedDeletions.length;
 
     const id = genId();
     state.seq += 1;
@@ -646,12 +702,16 @@ function gitCommit(message, amend) {
     };
     state.branches[state.currentBranch].tip = id;
     state.stagedFiles = [];
+    state.stagedDeletions = [];
     state.modified = state.modified.filter(f => !staged.includes(f));
 
     const added = files.size - prevFiles.length;
     out(`[${state.currentBranch} ${id.substring(0, 7)}] ${message}`, 'green');
     if (added > 0) {
         out(` ${added} file${added === 1 ? '' : 's'} changed`, 'green');
+    }
+    if (deletedCount > 0) {
+        out(` ${deletedCount} file${deletedCount === 1 ? '' : 's'} deleted`, 'green');
     }
 }
 
@@ -767,6 +827,26 @@ function gitRemote(args) {
             return;
         }
         state.remote = null;
+        return;
+    }
+
+    if (sub === 'set-url') {
+        if (!state.remote) {
+            out(`error: No such remote: '${words[1] || ''}'`, 'red');
+            return;
+        }
+        const name = words[1];
+        const url = words[2];
+        if (name && name !== state.remote.name) {
+            out(`error: No such remote: '${name}'`, 'red');
+            return;
+        }
+        if (!url) {
+            out('usage: git remote set-url <name> <newurl>', 'red');
+            return;
+        }
+        state.remote.url = url;
+        out(`Updated remote ${name || state.remote.name}`, 'green');
         return;
     }
 

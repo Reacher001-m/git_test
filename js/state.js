@@ -17,6 +17,7 @@ const state = {
     commits: {},           // id -> { id, message, parents:[], files:[], date, seq }
     seq: 0,
     stagedFiles: [],       // ステージされたファイル(絶対パス)
+    stagedDeletions: [],   // 削除をステージしたファイル (git rm / git rm --cached)
     workingFiles: ['/README.md', '/src/app.js', '/src/utils.js'],
     modified: [],          // 追跡済みで変更されたファイル(絶対パス)
     tags: {},              // name -> { commit, annotated, message, date }
@@ -89,6 +90,7 @@ function resetRepo() {
     state.commits = {};
     state.seq = 0;
     state.stagedFiles = [];
+    state.stagedDeletions = [];
     state.workingFiles = ['/README.md', '/src/app.js', '/src/utils.js'];
     state.modified = [];
     state.tags = {};
