@@ -169,6 +169,46 @@ const PRACTICE = [
         solution: 'git tag -a v1.0.0 -m "release v1.0.0"\ngit tag',
         explanation: '「git tag -a」で注釈付きタグを作成します。-m でメッセージを添えると、リリースノート代わりにもなります。',
     },
+    {
+        level: '上級',
+        title: 'push が拒否された時の衝突解決',
+        blurb: 'あなたがローカルでコミットを重ねている間に、開発相手が GitHub 上でもコミットしました。この「分かれた状態」で push すると拒否されます。マージして解決しましょう。',
+        setup(ctx) {
+            state.workingFiles = [];
+            gitInit();
+            touchFiles(['app.js']);
+            gitAdd('app.js');
+            gitCommit('initial commit');
+            gitRemote('add origin');
+            gitPush('origin main');
+            // 開発相手が GitHub 上で1コミット進めた
+            peerCommitTip('main', 'update app.js (via GitHub)');
+            // あなたもローカルで1コミット進めた → diverged (ahead=1, behind=1)
+            touchFiles(['README.md']);
+            gitAdd('README.md');
+            gitCommit('feat: add README.md');
+        },
+        checks: [
+            { desc: 'ローカルと origin/main が同じコミットを指している (同期済み)', test: () => !!state.remote && !!state.remote.branches['main'] && !!(state.remote.branches['main'] === state.branches['main'].tip), hint: 'git pull origin main で相手の変更を取り込んでから、git push origin main で送信すると同期します。' },
+            { desc: 'ローカル先頭が2つの親を持つ「マージコミット」になっている', test: () => {
+                const tip = state.branches['main'] && state.branches['main'].tip;
+                return !!(tip && state.commits[tip].parents.length === 2);
+            }, hint: '分かれた2つの線を結ぶには git pull origin main(分岐があるのでマージコミットが作られる) を使います。' },
+            { desc: '開発相手 (via GitHub) のコミットがローカルに取り込まれている', test: () => {
+                const tip = state.branches['main'] && state.branches['main'].tip;
+                if (!tip) return false;
+                return Object.keys(state.commits).some(id => /via GitHub/i.test(state.commits[id].message) && isAncestor(id, tip));
+            }, hint: '修正用のコミットが git log --oneline に出てくるはずです。' },
+            { desc: '自分のコミット (add README.md) が origin/main に含まれて同期済み', test: () => {
+                if (!state.remote || !state.remote.branches['main']) return false;
+                const r = state.remote.branches['main'];
+                if (r !== state.branches['main'].tip) return false;
+                return Object.keys(state.commits).some(id => /add README\.md/i.test(state.commits[id].message) && isAncestor(id, r));
+            }, hint: '最後の git push origin main が通らないと自分のコミットは GitHub に届きません。' },
+        ],
+        solution: 'git push origin main   # rejected (non-fast-forward) になる\ngit pull origin main      # 分かれた2つの線をマージコミットで統合\ngit push origin main      # 今度は通る。同期完了',
+        explanation: 'ローカルと GitHub が「分かれた状態」での push は、歴史を消す恐れがあるため拒否されます (non-fast-forward)。解決法は「先に pull」で相手の変更を取り込み、マージコミットで統合してから、改めて push すること。無理に force push せず、まず pull するのが鉄則です。',
+    },
 ];
 
 function renderPracticeList() {

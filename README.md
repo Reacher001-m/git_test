@@ -6,6 +6,8 @@ Git と GitHub の操作を、実際にコマンドを打ちながら学べる�
 Windows 風の PowerShell ターミナル上で、シミュレーションされた Git リポジトリに対して
 本物の Git と同じような操作を体験できます。
 
+[サイトはこちら→](https://git-test.yuusi.workers.dev/)
+
 ---
 
 ## 主な機能
