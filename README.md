@@ -21,17 +21,21 @@ Windows 風の PowerShell ターミナル上で、シミュレーションされ
 - **やり直し・復元（元に戻す系）** … `git reset --soft/--hard HEAD~N` / `git revert HEAD` / `git restore <file> (--staged)` / `git commit --amend -m`
 - **ファイルの追跡から外す** … `git rm <file>` / `git rm --cached <file>`（手元に残して Git 管理だけ外す）
 - **ブランチの可視化** … `git graph` で SVG のブランチツリー、`git log --graph` でテキストグラフを表示
-- **GitHub 連携（リモート操作）** … `remote add / set-url / rm / push / fetch / pull / peer-commit`（後述）
+- **GitHub 連携（リモート操作）** … `remote add / set-url / rm / push / fetch / pull / peer-commit / pr`（後述）
+- **プルリクエスト（学習用独自コマンド）** … `git pr create / review / merge / list`
 
 ### 2. 開発フローで学ぶタブ（チュートリアル）
 
 「初期化 → 状態確認 → ステージ → コミット → ログ → ブランチ → マージ → タグ」の
-実開発の流れを **2 つのコース**で学べます。
+実開発の流れを **3 つのコース**で学べます。
 
 - **コース 1「開発フローの基礎」** … init からタグ付けまでの 11 ステップ
 - **コース 2「GitHub でチーム開発」** … remote 登録 → push -u → 毎日のコミット&プッシュ →
   相手のコミット（peer-commit）→ pull（Fast-forward）→ 分岐 → push 拒否 → pull でマージ →
   再 push → タグ付けの 11 ステップ
+- **コース 3「GitHub でチーム開発 2（プルリクエスト）」** … ブランチ作成 → 作業・コミット →
+  ブランチ push → `git pr create` でプルリクエスト → レビュー対応 → `git pr merge` でマージ →
+  pull で反映 → ブランチ削除の 8 ステップ（fork を使う OSS 型の流れも解説つき）
 
 - コース一覧画面から選んで開始し、指示どおりコマンドを入力すると自動チェックされて次へ進む
 - 「自動実行」「ヒント」「スキップ」ボタン付き
@@ -114,9 +118,17 @@ Windows 風の PowerShell ターミナル上で、シミュレーションされ
 | `git fetch [origin]` | リモートの状態だけ取得 |
 | `git pull [origin] [branch]` | リモートを取り込み（Fast-forward / 分岐時はマージコミット） |
 | `git peer-commit <branch> -m "msg"` | 開発相手の GitHub での直接コミットをシミュレート（独自コマンド） |
+| `git pr create <from> <to>` | プルリクエストを開く（GitHub の PR 作成画面を再現する独自コマンド） |
+| `git pr review <branch>` | レビューアーのコメントを確認（独自コマンド） |
+| `git pr merge <branch>` | レビューアーが GitHub 上で PR をマージする（独自コマンド） |
+| `git pr list` | 開いているプルリクエスト一覧（独自コマンド） |
 
 `git peer-commit` は**学習用の独自コマンド**です。リモート側にだけコミットを追加し、
 「自分のローカルが ahead / behind」という状態を作り出すために使います。
+
+`git pr` は**学習用の独自コマンド**です。`create` で PR 番号（#1）を発番し、`merge` を実行すると
+リモートの受け入れ先ブランチ（main など）にマージコミット（親が 2 つ）が積まれます。
+ローカルへは `git checkout main` → `git pull origin main` で反映する、という一連の流れで学習します。
 
 ### ahead / behind（同期状態）
 
@@ -139,10 +151,10 @@ js/
   state.js          リポジトリ状態 (state)・仮想 FS (fsState)・リセット・共通ユーティリティ
   path.js           パス解決・正規化・Windows 表示変換
   filesystem.js     pwd / mkdir / cd / rmdir / ls / tree / touch / rm の実装
-  gitcore.js        git コマンド本体（init〜tag、reset/revert/restore/rm、remote / push / fetch / pull / peer-commit）
+  gitcore.js        git コマンド本体（init〜tag、reset/revert/restore/rm、remote / push / fetch / pull / peer-commit / pr）
   graph.js          git graph（SVG）・git log --graph（テキスト）の描画
   terminal.js       出力 (out/echo)・入力バインド・履歴・タブ切替・コマンドディスパッチ・help
-  tutorial.js       開発フローチュートリアル（2 コース）のエンジンとステップ定義
+  tutorial.js       開発フローチュートリアル（3 コース）のエンジンとステップ定義
   practice.js       上級者向け問題（7 問）のエンジンと問題定義
   cheatsheet.js     早見表（状況×コマンド×手順）のデータと描画・検索
   main.js           エントリポイント（イベント登録・起動処理・依存チェック）
@@ -166,6 +178,8 @@ state = {
   tags:      { name: { commit, annotated, message, date } },
   remote: null | { name, url, branches:{name->tip}, synced:{name->lastFetchTip} },
   lastPushRejected: boolean, // 直近の push が拒否されたか（チュートリアル判定用）
+  prs: { branch: { number, from, to, date, merged, mergeCommit } }, // プルリクエストのシミュレーション
+  prSeq: number,             // PR 番号（#1, #2 ...）の連番
 }
 
 fsState = {
@@ -187,14 +201,14 @@ fsState = {
 2. ターミナルタブで `help` と入力してコマンド一覧を確認
 3. おすすめの流れ:
    `git init` → `touch README.md` → `git add .` → `git commit -m "initial"` → `git graph`
-4. 「開発フローで学ぶ」タブでステップ式のレッスン（コース 2 では GitHub チーム開発）
+4. 「開発フローで学ぶ」タブでステップ式のレッスン（コース 2 では GitHub チーム開発、コース 3 ではプルリクエスト開発）
 5. 「上級者向け問題」タブで練習問題に挑戦（7 問）
 6. 「早見表」タブで「こんなときどうする?」を検索（例: バグ / push / 戻す）
 
 ## 開発メモ
 
 - ロジックはすべて素の JavaScript（フレームワーク・外部ライブラリなし）
-- カスタムコマンド（`git graph` / `git peer-commit`）は本物の Git にはない学習用機能
+- カスタムコマンド（`git graph` / `git peer-commit` / `git pr`）は本物の Git にはない学習用機能
 - タブは 4 つとも別々の作動領域を持ち、共通の `state` を共有する
 - やり直し系（`reset --soft/--hard` / `revert` / `restore` / `commit --amend`）と
   `git rm (--cached)`、`git remote set-url` はサンドボックス用に新規実装した学習用コマンド

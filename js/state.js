@@ -23,6 +23,8 @@ const state = {
     tags: {},              // name -> { commit, annotated, message, date }
     remote: null,          // { name, url, branches: {name->tip}, synced: {name->lastFetchTip} } / null で未設定
     lastPushRejected: false, // 直近の push が拒否(rejected)されたか。チュートリアルのステップ判定に使う
+    prs: {},               // プルリクエストのシミュレーション。branch名 -> { number, from, to, date, merged, mergeCommit }
+    prSeq: 0,              // PR 番号 (#1, #2 ...) の連番
 };
 
 // ---------------------------------------------------------------------
@@ -96,6 +98,8 @@ function resetRepo() {
     state.tags = {};
     state.remote = null;
     state.lastPushRejected = false;
+    state.prs = {};
+    state.prSeq = 0;
     fsState.dirs = new Set(['/', '/src']);
     fsState.cwd = '/';
     idCounter = 0;

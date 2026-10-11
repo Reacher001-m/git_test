@@ -1,6 +1,6 @@
 // =====================================================================
 // 開発フローチュートリアル (「開発フローで学ぶ」タブ)
-//   - コース定義 (COURSES): 「開発フローの基礎」/「GitHub でチーム開発」
+//   - コース定義 (COURSES): 「開発フローの基礎」/「GitHub でチーム開発」/「GitHub でチーム開発 2 (プルリクエスト)」
 //   - コース一覧 / ステップ / 完了画面
 //   - 入力検証・自動実行・フィードバック
 // =====================================================================
@@ -471,6 +471,190 @@ const COURSES = [
             ],
         },
     },
+
+    // ---------------------------------------------------------------------
+    // コース 3: GitHub でチーム開発 2 (プルリクエスト編)
+    // ---------------------------------------------------------------------
+    {
+        title: 'GitHub でチーム開発 2 (プルリクエスト)',
+        blurb: 'ブランチを切って作業し、GitHub に push、プルリクエストを開いてレビュー・マージまで、一気通貫で体験します。',
+        setup() {
+            state.workingFiles = ['/README.md'];
+            gitInit();
+            touchFiles(['README.md']);
+            gitAdd('README.md');
+            gitCommit('docs: initial readme');
+            gitRemote('add origin');
+            gitPush('-u origin main');
+        },
+        steps: [
+            {
+                title: 'ブランチを切って新機能を始める',
+                body: [
+                    'チーム開発では、いきなり main にコミットせず「作業用ブランチ」を切ってから開発します。main は「いつでも動く状態」のまま保つのが鉄則です。',
+                    '「git checkout -b」でブランチの作成と移動を一度に行います。プロンプトのブランチ名が feature/login に変わります。',
+                ],
+                command: 'git checkout -b feature/login',
+                parts: [
+                    { t: 'git checkout -b <name>', d: 'ブランチの作成と移動を一度にする' },
+                    { t: 'feature/login', d: '「<機能>/<内容>」の命名。ログイン機能を追加するブランチ' },
+                ],
+                commands: ['git checkout -b feature/login'],
+                hint: '「git checkout -b feature/login」と入力してください。',
+                check: () => state.currentBranch === 'feature/login',
+                success: ['feature/login ブランチに移動しました。', 'このブランチの上で作業します。'],
+            },
+            {
+                title: 'ブランチ上で作業してコミットする',
+                body: [
+                    'ブランチ上でファイルを追加してコミットします。このコミットは feature/login にだけ積まれ、main には影響しません。',
+                    '「git log --graph」や「git graph」で、main から分かれた線が確認できます。',
+                ],
+                command: 'touch login.txt\n→ git add login.txt\n→ git commit -m "feat: add login"',
+                parts: [
+                    { t: 'touch login.txt', d: '作業の成果物を作成する' },
+                    { t: 'git add login.txt', d: 'ステージに追加する' },
+                    { t: 'git commit -m "feat: add login"', d: 'feature/login にコミットを積む' },
+                ],
+                commands: ['touch login.txt', 'git add login.txt', 'git commit -m "feat: add login"'],
+                hint: '「touch login.txt」「git add login.txt」「git commit -m "feat: add login"」の順に入力してください。',
+                check: () => {
+                    const tip = state.branches['feature/login'] && state.branches['feature/login'].tip;
+                    const mTip = state.branches['main'] && state.branches['main'].tip;
+                    if (!tip || !mTip) return false;
+                    return tip !== mTip && state.commits[tip].files.includes('/login.txt');
+                },
+                success: ['feature/login にだけコミットが積まれました。', 'このブランチを GitHub に公開しましょう。'],
+            },
+            {
+                title: 'ブランチを GitHub に push する',
+                body: [
+                    'ブランチごとに push します。初回は「-u」(--set-upstream)で追跡設定しておくと、2回目以降の push が省略形で書けるようになります。',
+                    'push すると GitHub 側が「remote: Create a pull request」と、プルリクエスト作成の案内を出します。ここからが本題です。',
+                ],
+                command: 'git push -u origin feature/login',
+                parts: [
+                    { t: 'git push', d: 'ローカルのコミットを GitHub に送信する' },
+                    { t: '-u / --set-upstream', d: '追跡設定。以後 push は省略形で書ける' },
+                    { t: 'origin feature/login', d: '送り先のリモートとブランチを指定' },
+                    { t: 'remote: Create a pull request', d: 'push 後に GitHub が表示する PR 作成の案内' },
+                ],
+                commands: ['git push -u origin feature/login'],
+                hint: '「git push -u origin feature/login」と入力してください。',
+                check: () => !!state.remote && state.remote.branches['feature/login'] === state.branches['feature/login'].tip,
+                success: ['feature/login が GitHub に公開されました。', '次はこのブランチから「プルリクエスト」を開きます。'],
+            },
+            {
+                title: 'プルリクエストを開く',
+                body: [
+                    'プルリクエスト(PR)は「この変更を main に取り込んでください」という依頼です。実際の GitHub は Web 画面で開きますが、ここでは学習用コマンド「git pr create」で再現します。',
+                    '「from (送り手) → to (受け入れ先)」の順に指定します。開くと PR 番号 (#1) が付きます。',
+                ],
+                command: 'git pr create feature/login main',
+                parts: [
+                    { t: 'git pr create <from> <to>', d: '(独自コマンド) GitHub の PR 作成画面を再現' },
+                    { t: 'feature/login', d: '取り込んでほしいブランチ' },
+                    { t: 'main', d: '取り込む先のブランチ' },
+                    { t: 'PR #1', d: '開いたプルリクエストに付く通し番号' },
+                ],
+                commands: ['git pr create feature/login main'],
+                hint: '「git pr create feature/login main」と入力してください。',
+                check: () => !!state.prs['feature/login'] && state.prs['feature/login'].to === 'main' && !state.prs['feature/login'].merged,
+                success: ['PR #1 を開きました。', '実際の GitHub ではここで「レビューアー」を指名します。レビューの様子も再現してみましょう。'],
+            },
+            {
+                title: 'レビューコメントに対応して再 push',
+                body: [
+                    'PR を開くと、レビューアー(仲間)が確認してコメントをくれます。「git pr review」で確認しましょう。',
+                    '指摘に対応して修正をコミットし、そのまま「git push」を実行すればプルリクエストが自動で更新されます。改めて開き直す必要はありません。',
+                ],
+                command: 'git pr review feature/login\n→ touch login.txt\n→ git add login.txt\n→ git commit -m "fix: address review"\n→ git push',
+                parts: [
+                    { t: 'git pr review <branch>', d: '(独自コマンド) レビューアーのコメントを確認する' },
+                    { t: '修正 → commit → push', d: '再 push するだけでプルリクエストが自動更新される' },
+                ],
+                commands: ['git pr review feature/login', 'touch login.txt', 'git add login.txt', 'git commit -m "fix: address review"', 'git push'],
+                hint: '「git pr review feature/login」でコメントを確認し、修正をコミットしたあと「git push」を実行してください。',
+                check: () => {
+                    if (!state.remote) return false;
+                    const tip = state.branches['feature/login'] && state.branches['feature/login'].tip;
+                    const mTip = state.branches['main'] && state.branches['main'].tip;
+                    if (!tip || !mTip) return false;
+                    if (state.remote.branches['feature/login'] !== tip) return false;
+                    return reachableSet(tip).size - reachableSet(mTip).size >= 2;
+                },
+                success: ['修正を push して PR が更新されました (feature のコミットは2つに)。', 'レビュー OK が出たので、次はレビューアーがマージします。'],
+            },
+            {
+                title: 'レビューアーが PR をマージする',
+                body: [
+                    '承認が取れたら、レビューアー(またはマージ権限を持つ人)が GitHub 上で「Merge」ボタンを押します。ここでは「git pr merge」で再現します。',
+                    'GitHub 上でマージされると、リモートの main に「マージコミット」(親が2つ)が積まれます。あなたのローカルはまだ古いままです。',
+                ],
+                command: 'git pr merge feature/login',
+                parts: [
+                    { t: 'git pr merge <branch>', d: '(独自コマンド) レビューアーが GitHub 上で PR をマージする' },
+                    { t: 'マージコミット', d: '親が2つ。feature の変更が origin/main に取り込まれる' },
+                ],
+                commands: ['git pr merge feature/login'],
+                hint: '「git pr merge feature/login」と入力してください。',
+                check: () => !!state.prs['feature/login'] && state.prs['feature/login'].merged
+                    && !!state.remote.branches['main']
+                    && state.commits[state.remote.branches['main']].parents.length === 2,
+                success: ['PR #1 がマージされました。origin/main があなたのローカルより先に進みました。', 'ローカルの main を最新にします。'],
+            },
+            {
+                title: 'マージ結果を手元に取り込む',
+                body: [
+                    'まず受け入れ側の main に移動します。取り込む先のブランチに戻るのが原則です。',
+                    '次に「git pull origin main」で GitHub の最新(マージコミット)を取り込みます。ローカルはリモートの祖先なので Fast-forward で追いつきます。',
+                ],
+                command: 'git checkout main\n→ git pull origin main',
+                parts: [
+                    { t: 'git checkout main', d: '受け入れ側のブランチに移動する' },
+                    { t: 'git pull origin main', d: 'GitHub のマージコミットを取り込む (Fast-forward)' },
+                ],
+                commands: ['git checkout main', 'git pull origin main'],
+                hint: '「git checkout main」のあと「git pull origin main」と入力してください。',
+                check: () => state.currentBranch === 'main'
+                    && !!state.remote && state.remote.branches['main'] === state.branches['main'].tip,
+                success: ['main にマージ結果が届きました。あなたの変更が正式に main に載りました。', '最後に、役目を終えたブランチを片付けます。'],
+            },
+            {
+                title: '不要になったブランチを削除する',
+                body: [
+                    'GitHub に push したブランチも、マージが終わったら削除が基本です。',
+                    '「git branch -d feature/login」でローカルのブランチを削除します(マージ済みなので安全に消せます)。GitHub 側のブランチは通常 Web 上で削除します。',
+                ],
+                command: 'git branch -d feature/login',
+                parts: [
+                    { t: 'git branch -d <name>', d: 'マージ済みブランチの削除。未マージならエラーになる' },
+                    { t: 'ローカル / GitHub 側', d: 'ローカルはコマンドで。GitHub 側は Web 画面で削除するのが実運用' },
+                ],
+                commands: ['git branch -d feature/login'],
+                hint: '「git branch -d feature/login」と入力してください。git branch で main だけになれば成功。',
+                check: () => Object.keys(state.branches).length === 1,
+                success: ['ブランチを削除しました。main だけが残っています。', 'これで一連のプルリクエスト開発の流れが完成です!'],
+            },
+            { title: null },
+        ],
+        done: {
+            title: '🎉 プルリクエスト開発コース完了!',
+            body: [
+                '<p>ブランチを切って「プルリクエスト」で統合する、チーム開発の定番フローを一通り体験しました。おさらいです。</p>',
+                '<p><b>1. git checkout -b feature/login</b> … main を守るために作業用ブランチを切る<br>' +
+                '<b>2. 作業 → commit</b> … ブランチ上にコミットを積む<br>' +
+                '<b>3. git push -u origin feature/login</b> … ブランチを GitHub に公開<br>' +
+                '<b>4. git pr create feature/login main</b> … プルリクエスト(取り込み依頼)を開く<br>' +
+                '<b>5. レビュー → 修正 → 再 push</b> … push するだけで PR が自動更新<br>' +
+                '<b>6. git pr merge feature/login</b> … 承認され、レビューアーが GitHub 上でマージ<br>' +
+                '<b>7. git checkout main → git pull</b> … 最新の main をローカルに反映<br>' +
+                '<b>8. git branch -d feature/login</b> … 済んだブランチを片付ける</p>',
+                '<p>標準的な運用では「送り手は push まで」「マージはレビューアーが GitHub 上で」と役割を分けます。<br>' +
+                'OSS に貢献する場合は「fork(自分のアカウントにコピー)」→ そのコピーでブランチ・作業 → push → プルリクエスト、という形になります。</p>',
+            ],
+        },
+    },
 ];
 
 function renderWorkflowStart() {
@@ -499,6 +683,7 @@ function renderWorkflowStart() {
 
 function startCourse(course) {
     resetRepo();
+    if (COURSES[course] && COURSES[course].setup) COURSES[course].setup();
     workflowView.state = 'started';
     workflowView.course = course;
     workflowView.index = 0;

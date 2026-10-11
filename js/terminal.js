@@ -131,6 +131,10 @@ function showHelp() {
     out('  git pull [origin] [branch]    GitHub の変更を取り込む (fetch + merge)');
     out('  git fetch [origin]            GitHub から取り込み情報だけ更新');
     out('  git peer-commit <branch> -m "msg"  開発相手の GitHub 操作をシミュレート (独自コマンド)');
+    out('  git pr create <from> <to>      プルリクエストを開く (独自コマンド)');
+    out('  git pr review <branch>         レビューアーのコメントを確認 (独自コマンド)');
+    out('  git pr merge <branch>          レビューアーが PR をマージ (独自コマンド)');
+    out('  git pr list                    開いているプルリクエスト一覧 (独自コマンド)');
     out('  git status / git branch -vv   origin との ahead/behind を表示');
     out('');
     out('== その他 ==', 'cyan');
@@ -188,6 +192,7 @@ function dispatchGit(body) {
         case 'fetch': gitFetch(rest); break;
         case 'pull': gitPull(rest); break;
         case 'peer-commit': gitPeerCommit(rest); break;
+        case 'pr': gitPr(rest); break;
         case 'help':
         case '--help': showHelp(); break;
         case 'version':

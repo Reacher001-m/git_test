@@ -1095,6 +1095,125 @@ function gitPeerCommit(args) {
     out('「git status」で自分のブランチが behind になっているのを確認できます。', 'gray');
 }
 // ---------------------------------------------------------------------
+// git pr (プルリクエストのシミュレーション / 独自コマンド)
+//   git pr create <from> <to>   プルリクエストを開く (GitHub の画面を再現)
+//   git pr review <from>        レビューアーのコメントを確認する
+//   git pr merge <from>         レビューアーが GitHub 上で PR をマージする
+//   git pr list                 開いている PR の一覧
+// ---------------------------------------------------------------------
+function gitPr(args) {
+    if (!guardInit()) return;
+    const words = (args || '').trim().split(/\s+/).filter(Boolean);
+    const sub = words[0];
+    if (!sub) {
+        out('usage: git pr <create|review|merge|list>', 'red');
+        return;
+    }
+
+    if (sub === 'create') {
+        const from = words[1], to = words[2];
+        if (!from || !to) { out('usage: git pr create <from-branch> <to-branch>', 'red'); return; }
+        if (!state.remote) { out("(プルリクエストは GitHub 上で開きます。まず 'git remote add origin' が必要です)", 'red'); return; }
+        if (!state.branches[from]) { out(`error: branch '${from}' does not exist locally`, 'red'); return; }
+        if (!state.remote.branches[to]) { out(`fatal: couldn't find remote ref ${to}`, 'red'); return; }
+        if (!state.remote.branches[from]) {
+            out(`error: '${from}' がまだ GitHub に push されていません。`, 'red');
+            out(`hint: 先に「git push -u origin ${from}」でブランチを送信してください。`, 'gray');
+            return;
+        }
+        if (state.prs[from] && !state.prs[from].merged) {
+            out(`error: ブランチ '${from}' からのプルリクエストは既に開いています。`, 'red');
+            return;
+        }
+        state.prSeq += 1;
+        const number = state.prSeq;
+        state.prs[from] = { number, from, to, date: fmtDate(), merged: false, mergeCommit: null };
+        const tip = state.branches[from].tip;
+        if (!tip) {
+            out(`error: branch '${from}' has no commits yet`, 'red');
+            return;
+        }
+        out('(学習用コマンド: GitHub の「Open a pull request」画面を再現しています)', 'dim');
+        out('Open a pull request', 'yellow');
+        out(`  from:  ${from}`);
+        out(`  to:    ${to}`);
+        out('  ' + tip.substring(0, 7) + '  ' + state.commits[tip].message, 'cyan');
+        out(`PR #${number} を開きました。 (URL: ${state.remote.url.replace(/\.git$/, '')}/pull/${number} 架空)`, 'green');
+        out('  actual GitHub ではこの画面で Reviewers を指名してレビューを依頼します。', 'gray');
+        return;
+    }
+
+    if (sub === 'review') {
+        const from = words[1];
+        if (!from) { out('usage: git pr review <branch>', 'red'); return; }
+        const pr = state.prs[from];
+        if (!pr) { out(`error: ブランチ '${from}' のプルリクエストが見つかりません。先に git pr create してください。`, 'red'); return; }
+        if (pr.merged) { out(`PR #${pr.number} は既にマージ済みです。`, 'gray'); return; }
+        out('(レビューアーのコメントをシミュレート)', 'dim');
+        out('> 機能は良さそうです。あと1点だけ、ログイン後の画面にも同じ表記があるか確認してください。', 'yellow');
+        out('  actual GitHub では PR の「Conversation」タブにコメントが付き、', 'gray');
+        out('  修正したコミットを push するたびにプルリクエストが自動で更新されます。', 'gray');
+        return;
+    }
+
+    if (sub === 'merge') {
+        const from = words[1];
+        if (!from) { out('usage: git pr merge <branch>', 'red'); return; }
+        const pr = state.prs[from];
+        if (!pr) { out(`error: ブランチ '${from}' のプルリクエストが見つかりません。先に git pr create してください。`, 'red'); return; }
+        if (pr.merged) { out(`PR #${pr.number} は既にマージ済みです。`, 'gray'); return; }
+        const fromTip = state.remote.branches[from];
+        const baseTip = state.remote.branches[pr.to];
+        if (!fromTip) { out(`fatal: リモートに '${from}' ブランチがありません。先に push してください。`, 'red'); return; }
+        if (!baseTip) { out(`fatal: couldn't find remote ref ${pr.to}`, 'red'); return; }
+        if (isAncestor(fromTip, baseTip)) {
+            out(`PR #${pr.number} の変更は既に ${pr.to} に含まれています。`, 'gray');
+            pr.merged = true;
+            pr.mergeCommit = baseTip;
+            return;
+        }
+        const files = [...new Set([...state.commits[baseTip].files, ...state.commits[fromTip].files])];
+        const id = genId();
+        state.seq += 1;
+        state.commits[id] = {
+            id,
+            message: `Merge pull request #${pr.number} from ${from}`,
+            parents: [baseTip, fromTip],
+            files,
+            date: fmtDate(),
+            seq: state.seq,
+        };
+        state.remote.branches[pr.to] = id;
+        pr.merged = true;
+        pr.mergeCommit = id;
+        out('(レビューアーが GitHub 上でプルリクエストをマージしました)', 'dim');
+        out('Merge pull request #' + pr.number + ' from ' + from, 'yellow');
+        const moved = historyIdList(baseTip, fromTip);
+        for (const cid of moved.reverse()) {
+            out('  * ' + cid.substring(0, 7) + ' ' + state.commits[cid].message, 'cyan');
+        }
+        out('  origin/' + pr.to + ' が 1 つ進みました。', 'green');
+        out('  ローカルに反映するには「git checkout ' + pr.to + '」「git pull origin ' + pr.to + '」です。', 'gray');
+        return;
+    }
+
+    if (sub === 'list') {
+        const entries = Object.values(state.prs).filter(p => !p.merged);
+        if (entries.length === 0) {
+            out('No open pull requests.');
+            return;
+        }
+        for (const p of entries) {
+            out('#' + p.number + '  ' + p.from + ' → ' + p.to + '  (open)', 'green');
+        }
+        return;
+    }
+
+    out(`error: unknown PR subcommand '${sub}'`, 'red');
+    out('usage: git pr <create|review|merge|list>', 'red');
+}
+
+// ---------------------------------------------------------------------
 // git log
 // ---------------------------------------------------------------------
 function gitLog(args) {
